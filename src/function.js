@@ -1,43 +1,48 @@
 export const getTreeDeviceConvert = (treeGroup) => {
   return treeGroup.nodeListWithoutDevices.reduce(
-    (curNode, accumalteNode) => {
+    (curNode, accumulateNode) => {
       let dataUpdate = {};
 
-      if (curNode[accumalteNode.parentId]) {
+      if (curNode[accumulateNode.parentId]) {
         dataUpdate = {
           ...curNode,
-          [accumalteNode.parentId]: {
-            ...curNode[accumalteNode.parentId],
+          [accumulateNode.parentId]: {
+            ...curNode[accumulateNode.parentId],
             children: [
-              ...curNode[accumalteNode.parentId].children,
-              accumalteNode.id,
+              ...curNode[accumulateNode.parentId].children,
+              accumulateNode.id,
             ],
           },
         };
       } else {
         const findNode = treeGroup.nodeListWithoutDevices.find(
-          (node) => node.id === accumalteNode.parentId
+          (node) => node.id === accumulateNode.parentId
         );
 
         dataUpdate = {
           ...curNode,
-          [accumalteNode.parentId]: {
+          [accumulateNode.parentId]: {
             ...findNode,
-            children: [accumalteNode.id],
+            children: [accumulateNode.id],
+            type: "group",
+            name: accumulateNode.label,
           },
         };
       }
 
-      if (curNode[accumalteNode.id]) {
+      if (curNode[accumulateNode.id]) {
         return {
           ...dataUpdate,
+          name: accumulateNode.label,
         };
       } else {
         return {
           ...dataUpdate,
-          [accumalteNode.id]: {
-            ...accumalteNode,
+          [accumulateNode.id]: {
+            ...accumulateNode,
             children: [],
+            type: "group",
+            name: accumulateNode.label,
           },
         };
       }
@@ -46,6 +51,8 @@ export const getTreeDeviceConvert = (treeGroup) => {
       [treeGroup.currentNode.id]: {
         ...treeGroup.currentNode,
         children: [],
+        type: "group",
+        name: treeGroup.currentNode.label,
       },
     }
   );

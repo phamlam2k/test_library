@@ -11,32 +11,45 @@ const useTreeGroupList = (getTreeGroupDevice) => {
   const treeConvertGroup = useMemo(() => {
     if (!treeGroupList) return undefined;
 
-    return getTreeDeviceConvert(treeGroupList);
+    const treeGroupObj = getTreeDeviceConvert(treeGroupList);
+
+    return treeGroupList.nodeList.reduce(
+      (cur, acc) => {
+        const deviceObj = acc.deviceList.reduce((curDevice, accDevice) => {
+          return {
+            ...curDevice,
+            [accDevice.id]: {
+              ...accDevice,
+              children: [],
+              type: "device",
+              name: accDevice.camName,
+            },
+          };
+        }, {});
+
+        return {
+          ...cur,
+          [acc.id]: {
+            ...cur[acc.id],
+            children: [
+              ...acc.deviceList.map((device) => device.id),
+              ...cur[acc.id].children,
+            ],
+          },
+          ...deviceObj,
+        };
+      },
+      {
+        ...treeGroupObj,
+      }
+    );
   }, [treeGroupList]);
 
   const handleConvertToArr = useCallback(
     (groupId) => {
-      let deviceList = [];
-
-      const nodeFind = treeGroupList.nodeList.find(
-        (node) => node.id === groupId
-      );
-
-      if (nodeFind && nodeFind.deviceList && nodeFind.deviceList.length > 0) {
-        deviceList = nodeFind.deviceList.map((device) => ({
-          ...device,
-          type: "device",
-          name: device.camName,
-          children: [],
-        }));
-      }
-
       return {
         ...treeConvertGroup[groupId],
-        type: "group",
-        name: treeConvertGroup[groupId].label,
         children: [
-          ...deviceList,
           ...(treeConvertGroup[groupId].children.length > 0
             ? treeConvertGroup[groupId].children.map((childId) => ({
                 ...handleConvertToArr(childId),
@@ -46,7 +59,7 @@ const useTreeGroupList = (getTreeGroupDevice) => {
         ],
       };
     },
-    [treeConvertGroup, treeGroupList]
+    [treeConvertGroup]
   );
 
   const dataGroupList = useMemo(() => {
@@ -59,14 +72,52 @@ const useTreeGroupList = (getTreeGroupDevice) => {
     };
   }, [handleConvertToArr, treeConvertGroup, treeGroupList]);
 
-  const handleCheckItem = (e) => {
-    if (e.target.checked) {
-      setSelectedList((prev) => [...prev, e.target.value]);
+  const handleGetChildArr = (groupId) => {
+    let result = [];
+
+    treeConvertGroup[groupId].children.forEach((item) => {
+      if (treeConvertGroup[item].children.length > 0) {
+        result = result.concat(handleGetChildArr(item));
+      }
+      result.push(item);
+    });
+
+    return result;
+  };
+
+  const handleCheckChild = (isChecked, groupId, selectArr) => {
+    if (treeConvertGroup[groupId].children.length > 0) {
+      const getList = handleGetChildArr(groupId);
+      let selectArrChild = [...selectArr];
+
+      if (isChecked) {
+        selectArrChild = selectArrChild.concat(getList);
+      } else {
+        selectArrChild = selectArrChild.filter(
+          (item) => !getList.includes(item)
+        );
+      }
+
+      return selectArrChild;
     } else {
-      setSelectedList((prev) =>
-        [...prev].filter((item) => item !== e.target.value)
-      );
+      return [...selectArr];
     }
+  };
+
+  const handleCheckParent = (isChecked, groupId) => {};
+
+  const handleCheckItem = (e) => {
+    let selectArr = [...selectedList];
+
+    if (e.target.checked) {
+      selectArr.push(e.target.value);
+    } else {
+      selectArr = selectArr.filter((item) => item !== e.target.value);
+    }
+
+    selectArr = handleCheckChild(e.target.checked, e.target.value, selectArr);
+
+    setSelectedList(selectArr);
   };
 
   return {

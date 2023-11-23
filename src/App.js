@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import TreeView from "@material-ui/lab/TreeView";
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
@@ -16,7 +16,7 @@ const useStyles = makeStyles({
   },
 });
 
-const TreeViewCustom = ({ name, value, handleCheckItem }) => {
+const TreeViewCustom = ({ name, value, handleCheckItem, isChecked }) => {
   return (
     <label
       style={{
@@ -26,18 +26,17 @@ const TreeViewCustom = ({ name, value, handleCheckItem }) => {
       }}
     >
       <Typography>{name}</Typography>
-      <Checkbox onChange={handleCheckItem} value={value} />
+      <Checkbox onChange={handleCheckItem} value={value} checked={isChecked} />
     </label>
   );
 };
 
 function App() {
   const classes = useStyles();
-  const [expanded, setExpanded] = React.useState([]);
-
   const { data, selectedList, handleCheckItem } = useTreeGroupList(
     getTreeGroupDevice.data
   );
+  const [expanded, setExpanded] = React.useState([data.id]);
 
   const handleToggle = (event, nodeIds) => {
     if (event.target.nodeName !== "svg") {
@@ -45,6 +44,8 @@ function App() {
     }
     setExpanded(nodeIds);
   };
+
+  console.log("selectedList", selectedList);
 
   const renderTree = (nodes) => {
     return (
@@ -54,6 +55,7 @@ function App() {
         label={
           <TreeViewCustom
             value={nodes.id}
+            isChecked={selectedList.includes(nodes.id)}
             name={nodes.name}
             handleCheckItem={handleCheckItem}
           />
@@ -65,8 +67,6 @@ function App() {
       </TreeItem>
     );
   };
-
-  console.log("================================", selectedList);
 
   return (
     <>
