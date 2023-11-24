@@ -1,11 +1,22 @@
-import { useCallback, useMemo, useState } from "react";
-import { getTreeDeviceConvert } from "./function";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  containsAllElements,
+  filterTreeKeyWord,
+  getTreeDeviceConvert,
+} from "./function";
 
 const useTreeGroupList = (getTreeGroupDevice) => {
-  const [selectedList, setSelectedList] = useState([]);
+  const [keyWord, setKeyword] = useState("");
+  const [selectedList, setSelectedList] = useState({});
 
   const treeGroupList = useMemo(() => {
     return getTreeGroupDevice;
+  }, [getTreeGroupDevice]);
+
+  const listDevice = useMemo(() => {
+    return getTreeGroupDevice.nodeList.reduce((cur, acc) => {
+      return [...cur, ...acc.deviceList.map((device) => device.id)];
+    }, []);
   }, [getTreeGroupDevice]);
 
   const treeConvertGroup = useMemo(() => {
@@ -22,7 +33,7 @@ const useTreeGroupList = (getTreeGroupDevice) => {
               ...accDevice,
               children: [],
               type: "device",
-              name: accDevice.camName,
+              name: accDevice.camName ?? accDevice.id,
             },
           };
         }, {});
@@ -72,6 +83,18 @@ const useTreeGroupList = (getTreeGroupDevice) => {
     };
   }, [handleConvertToArr, treeConvertGroup, treeGroupList]);
 
+  const dataGroupListFilterKeyword = useMemo(() => {
+    if (keyWord === "") return dataGroupList;
+    return {
+      ...dataGroupList,
+      children: filterTreeKeyWord(
+        dataGroupList.children,
+        keyWord.toLowerCase()
+      ),
+    };
+  }, [dataGroupList, keyWord]);
+
+  console.log("dataGroupListFilterKeyword", dataGroupListFilterKeyword);
   const handleGetChildArr = (groupId) => {
     let result = [];
 
@@ -85,46 +108,100 @@ const useTreeGroupList = (getTreeGroupDevice) => {
     return result;
   };
 
-  const handleCheckChild = (isChecked, groupId, selectArr) => {
+  const handleCheckChild = (isChecked, groupId, selectObj) => {
     if (treeConvertGroup[groupId].children.length > 0) {
+      let selectObjChild = { ...selectObj };
       const getList = handleGetChildArr(groupId);
-      let selectArrChild = [...selectArr];
 
       if (isChecked) {
-        selectArrChild = selectArrChild.concat(getList);
+        selectObjChild = getList.reduce(
+          (cur, acc) => {
+            return {
+              ...cur,
+              [acc]: true,
+            };
+          },
+          {
+            ...selectObjChild,
+          }
+        );
       } else {
-        selectArrChild = selectArrChild.filter(
-          (item) => !getList.includes(item)
+        selectObjChild = getList.reduce(
+          (cur, acc) => {
+            return {
+              ...cur,
+              [acc]: false,
+            };
+          },
+          {
+            ...selectObjChild,
+          }
         );
       }
 
-      return selectArrChild;
+      return selectObjChild;
     } else {
-      return [...selectArr];
+      return { ...selectObj };
     }
   };
 
-  const handleCheckParent = (isChecked, groupId) => {};
+  const handleCheckParent = (isChecked, groupId, selectObj) => {
+    const parentId =
+      treeConvertGroup[groupId].type === "device"
+        ? treeConvertGroup[groupId].groupId
+        : treeConvertGroup[groupId].parentId;
 
-  const handleCheckItem = (e) => {
-    let selectArr = [...selectedList];
+    let selectObjChild = { ...selectObj };
 
-    if (e.target.checked) {
-      selectArr.push(e.target.value);
-    } else {
-      selectArr = selectArr.filter((item) => item !== e.target.value);
+    if (parentId !== "") {
+      if (isChecked) {
+        const listChild = treeConvertGroup[parentId].children;
+
+        if (containsAllElements(selectObjChild, listChild)) {
+          selectObjChild[parentId] = true;
+
+          selectObjChild = handleCheckParent(
+            isChecked,
+            parentId,
+            selectObjChild
+          );
+        }
+      } else {
+        selectObjChild[parentId] = false;
+
+        selectObjChild = handleCheckParent(isChecked, parentId, selectObjChild);
+      }
     }
 
-    selectArr = handleCheckChild(e.target.checked, e.target.value, selectArr);
+    return selectObjChild;
+  };
 
-    setSelectedList(selectArr);
+  const handleCheckItem = (e) => {
+    let selectObj = { ...selectedList };
+
+    if (e.target.checked) {
+      selectObj[e.target.value] = true;
+    } else {
+      selectObj[e.target.value] = false;
+    }
+
+    selectObj = handleCheckChild(e.target.checked, e.target.value, selectObj);
+    selectObj = handleCheckParent(e.target.checked, e.target.value, selectObj);
+
+    setSelectedList(selectObj);
+  };
+
+  const handleChangeKeyword = (e) => {
+    setKeyword(e.target.value);
   };
 
   return {
-    data: dataGroupList,
+    data: dataGroupListFilterKeyword,
     selectedList,
+    listDevice,
 
     handleCheckItem,
+    handleChangeKeyword,
   };
 };
 

@@ -57,3 +57,29 @@ export const getTreeDeviceConvert = (treeGroup) => {
     }
   );
 };
+
+export function containsAllElements(array1, array2) {
+  return array2.every((element) => array1[element]);
+}
+
+export const filterTreeKeyWord = (nodes, keyWord) => {
+  if (!keyWord) return nodes;
+  let filteredNodes = [];
+
+  nodes.forEach((node) => {
+    if (node.name.toLowerCase().includes(keyWord)) {
+      filteredNodes.push(node);
+    } else if (node.children) {
+      const childNodes = filterTreeKeyWord(node.children, keyWord);
+      if (childNodes.length > 0) {
+        filteredNodes.push({ ...node, children: childNodes });
+      }
+    }
+  });
+
+  if (filteredNodes.length > 0) {
+    return filteredNodes;
+  } else {
+    return [];
+  }
+};
